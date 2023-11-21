@@ -9,6 +9,18 @@ This repository contains an Ansible playbook for setting up a development enviro
 - SSH access to the target systems.
 - Sudo privileges on the target systems.
 
+### Install Nerd Fonts (local machine)
+```
+curl -sS https://webi.sh/nerdfont | sh    
+```
+
+### Python venv / Ansible (local machine)
+```
+python3 -m venv .venv   
+source .venv/bin/activate
+pip install ansible
+```
+
 ## Repository Structure 📂
 ```
 .
@@ -19,7 +31,6 @@ This repository contains an Ansible playbook for setting up a development enviro
 ├── .gitconfig # git config 
 └── playbook.yml # Ansible playbook
 ```
-
 
 ## Getting Started 🚦
 
