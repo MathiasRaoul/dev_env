@@ -1,0 +1,6 @@
+---
+zsh_aliases:
+  - v: 'lvim'
+  - vim: 'lvim'
+  - vi: 'lvim'
+  - k: 'kubectl'
