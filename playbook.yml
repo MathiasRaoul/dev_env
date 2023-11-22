@@ -5,93 +5,14 @@
     - alias_list.yml
 
   tasks:
-    # Package cache update
-    - name: Update package cache (APT)
-      become: true
-      apt:
-        update_cache: yes
-      when: ansible_os_family == "Debian"
+    # Common tasks for both Debian and RedHat families
+    - name: Check if Cargo is installed
+      shell: command -v cargo
+      register: cargo_exists
+      ignore_errors: true
       tags:
-        - apt
-        - update
+        - rust
 
-    - name: Update package cache (YUM/DNF)
-      become: true
-      dnf:
-        update_cache: yes
-      when: ansible_os_family == "RedHat"
-      tags:
-        - yum
-        - update
-
-    # Install common development packages
-    - name: Install dev packages (APT)
-      become: true
-      apt:
-        name:
-          - git
-          - zsh
-          - tmux
-          - build-essential
-          - libfuse2
-          - nodejs
-          - npm
-        state: present
-      when: ansible_os_family == "Debian"
-      tags:
-        - apt
-        - packages
-
-    - name: Install dev packages (YUM/DNF)
-      become: true
-      package:
-        name:
-          - git
-          - zsh
-          - tmux
-          - "@Development Tools"
-          - fuse-libs
-          - nodejs
-          - npm
-          - fuse
-        state: present
-      when: ansible_os_family == "RedHat"
-      tags:
-        - yum
-        - packages
-
-    # Install Python development packages
-    - name: Install python dev packages (APT)
-      become: true
-      apt:
-        name:
-          - python3-pip
-          - python3-venv
-          - python3.10
-          - python3.10-venv
-          - python3.10-full
-          - python3.10-dev
-        state: present
-      when: ansible_os_family == "Debian"
-      tags:
-        - apt
-        - python
-
-    - name: Install python dev packages (YUM/DNF)
-      become: true
-      package:
-        name:
-          - python3-pip
-          - python3-virtualenv
-          - python3.10
-          - python3.10-devel
-        state: present
-      when: ansible_os_family == "RedHat"
-      tags:
-        - yum
-        - python
-
-    # Oh My Zsh installation
     - name: Check if Oh My Zsh is installed
       stat:
         path: ~/.oh-my-zsh
@@ -100,13 +21,85 @@
       tags:
         - zsh
 
+    # Debian/Ubuntu specific tasks
+    - block:
+        - name: Update package cache (APT)
+          become: true
+          apt:
+            update_cache: yes
+          tags:
+            - apt
+            - update
+
+        - name: Install dev packages (APT)
+          apt:
+            name:
+              - git
+              - zsh
+              - tmux
+              - build-essential
+              - nodejs
+              - npm
+              - python3-pip
+              - python3-venv
+              - python3.10
+              - python3.10-venv
+              - python3.10-full
+              - python3.10-dev
+              - "{{ 'libfuse3-dev' if ansible_distribution_version is version('18.04', '<=') else 'libfuse-dev' }}"
+            state: present
+          tags:
+            - apt
+            - packages
+            - python
+
+        - name: Add user to fuse group
+          user:
+            name: "{{ ansible_env.USER }}"
+            groups: fuse
+            append: yes
+          tags:
+            - fuse
+      when: ansible_os_family == "Debian"
+
+    # RedHat specific tasks
+    - block:
+        - name: Update package cache (YUM/DNF)
+          dnf:
+            update_cache: yes
+          tags:
+            - yum
+            - update
+
+        - name: Install dev packages (YUM/DNF)
+          package:
+            name:
+              - git
+              - zsh
+              - tmux
+              - "@Development Tools"
+              - fuse-libs
+              - nodejs
+              - npm
+              - fuse
+              - python3-pip
+              - python3-virtualenv
+              - python3.10
+              - python3.10-devel
+            state: present
+          tags:
+            - yum
+            - packages
+            - python
+      when: ansible_os_family == "RedHat"
+
+    # Common tasks for both Debian and RedHat families (continued)
     - name: Install Oh My Zsh
-      when: omz_exists.stat.exists is false
       shell: curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
+      when: omz_exists.stat.exists is false
       tags:
         - zsh
 
-    # Setting Zsh as default shell
     - name: Ensure Zsh is the default shell
       ansible.builtin.user:
         name: "{{ ansible_env.USER }}"
@@ -131,13 +124,6 @@
         - conf
 
     # Rust and Cargo installation
-    - name: Check if Cargo is installed
-      shell: command -v cargo
-      register: cargo_exists
-      ignore_errors: true
-      tags:
-        - rust
-
     - name: Download Rust Installer
       when: cargo_exists is failed
       get_url:
